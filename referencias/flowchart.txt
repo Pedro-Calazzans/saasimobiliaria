@@ -1,0 +1,87 @@
+graph TD
+    %% Definição de Estilos para Clareza
+    classDef page fill:#E1F5FE,stroke:#0288D1,stroke-width:2px;
+    classDef action fill:#FFF3E0,stroke:#F57C00,stroke-width:1px;
+    classDef decision fill:#FFEBEE,stroke:#D32F2F,stroke-width:1px;
+    classDef db fill:#E8F5E9,stroke:#388E3C,stroke-width:2px,stroke-dasharray: 5 5;
+    classDef feedback fill:#F3E5F5,stroke:#7B1FA2,stroke-width:1px,stroke-dasharray: 3 3;
+
+    %% --- FLUXO DE ENTRADA ---
+    A(Início) --> B[Página de Login];
+    B -- Autentica com Sucesso --> C[Dashboard Principal];
+    B -- Falha na Autenticação --> B;
+
+    %% --- NAVEGAÇÃO PRINCIPAL A PARTIR DO DASHBOARD ---
+    C --> D{O que o corretor deseja fazer?};
+    D -- "Gerenciar Imóveis" --> Imoveis_Page;
+    D -- "Gerenciar Leads" --> Leads_Page;
+    D -- "Ver Funil de Vendas" --> Kanban_Page;
+    D -- "Ver Visitas" --> Visitas_Page;
+
+    %% --- SUBGRAPH: GESTÃO DE IMÓVEIS [PA-01] ---
+    subgraph Gestão de Imóveis
+        Imoveis_Page[Página: Meus Imóveis];
+        Imoveis_Page --> Imoveis_Action{Ação desejada?};
+        Imoveis_Action -- "Adicionar Novo Imóvel" --> Imoveis_Form[Abre formulário de cadastro];
+        Imoveis_Action -- "Editar Imóvel" --> Imoveis_SelectEdit[Seleciona um imóvel da lista];
+        Imoveis_Action -- "Excluir Imóvel" --> Imoveis_SelectDelete[Seleciona um imóvel da lista];
+
+        Imoveis_SelectEdit --> Imoveis_Form;
+        Imoveis_Form --> Imoveis_Save[Preenche/Altera dados e clica em Salvar];
+        Imoveis_Save --> Imoveis_DB_Write[("Salva/Atualiza dados na tabela 'properties'")];
+        Imoveis_DB_Write --> Imoveis_Feedback_Success[Exibe notificação: Imóvel salvo com sucesso!];
+        Imoveis_Feedback_Success --> Imoveis_Page;
+
+        Imoveis_SelectDelete --> Imoveis_ConfirmDelete{Tem certeza?};
+        Imoveis_ConfirmDelete -- "Sim" --> Imoveis_DB_Delete[("Deleta registro da tabela 'properties'")];
+        Imoveis_DB_Delete --> Imoveis_Feedback_Delete[Exibe notificação: Imóvel excluído.];
+        Imoveis_Feedback_Delete --> Imoveis_Page;
+        Imoveis_ConfirmDelete -- "Não" --> Imoveis_Page;
+    end
+
+    %% --- SUBGRAPH: GESTÃO DE LEADS [PA-02] ---
+    subgraph Gestão de Leads
+        Leads_Page[Página: Meus Leads];
+        Leads_Page --> Leads_Action{Ação desejada?};
+        Leads_Action -- "Adicionar Novo Lead" --> Leads_Form[Abre formulário de cadastro de lead];
+        Leads_Action -- "Ver/Editar Lead" --> Leads_SelectEdit[Seleciona um lead da lista];
+        
+        Leads_SelectEdit --> Leads_Form;
+        Leads_Form --> Leads_Save[Preenche/Altera dados e clica em Salvar];
+        Leads_Save --> Leads_DB_Write[("Salva/Atualiza dados na tabela 'leads'")];
+        Leads_DB_Write --> Leads_Feedback_Success[Exibe notificação: Lead salvo com sucesso!];
+        Leads_Feedback_Success --> Leads_Page;
+    end
+
+    %% --- SUBGRAPH: FUNIL DE VENDAS KANBAN [PA-03] ---
+    subgraph Funil_de_Vendas_Kanban
+        Kanban_Page[Página: Funil de Vendas Kanban];
+        Kanban_Page --> Kanban_View[Visualiza leads como cards nas colunas de status];
+        Kanban_View --> Kanban_Drag[Arrasta um card de lead para outra coluna];
+        Kanban_Drag --> Kanban_DB_Update[("Atualiza o campo 'funnel_stage' na tabela 'leads'")];
+        Kanban_DB_Update --> Kanban_Feedback[Exibe notificação: Status do lead atualizado!];
+        Kanban_Feedback --> Kanban_Page;
+        
+        Kanban_View --> Kanban_ClickCard[Clica em um card para ver detalhes];
+        Kanban_ClickCard --> Leads_Page;
+    end
+
+    %% --- SUBGRAPH: GESTÃO DE VISITAS [PA-04] ---
+    subgraph Gestão de Visitas
+        Visitas_Page[Página: Visitas Agendadas];
+        Visitas_Page --> Visitas_Action{Ação desejada?};
+        Visitas_Action -- "Agendar Nova Visita" --> Visitas_Form[Abre formulário de agendamento];
+        
+        Visitas_Form --> Visitas_Fill[Preenche dados: seleciona Lead, Imóvel, Data e Hora];
+        Visitas_Fill --> Visitas_Save[Clica em Salvar Visita];
+        Visitas_Save --> Visitas_DB_Write[("Salva dados na tabela 'visits'")];
+        Visitas_DB_Write --> Visitas_Feedback_Success[Exibe notificação: Visita agendada com sucesso!];
+        Visitas_Feedback_Success --> Visitas_Page;
+    end
+
+    %% --- APLICAÇÃO GERAL DE ESTILOS ---
+    class B,C,Imoveis_Page,Leads_Page,Kanban_Page,Visitas_Page page;
+    class D,Imoveis_Action,Imoveis_ConfirmDelete,Leads_Action,Visitas_Action decision;
+    class Imoveis_Form,Imoveis_Save,Imoveis_SelectEdit,Imoveis_SelectDelete,Leads_Form,Leads_Save,Leads_SelectEdit,Kanban_View,Kanban_Drag,Kanban_ClickCard,Visitas_Form,Visitas_Fill,Visitas_Save action;
+    class Imoveis_DB_Write,Imoveis_DB_Delete,Leads_DB_Write,Kanban_DB_Update,Visitas_DB_Write db;
+    class Imoveis_Feedback_Success,Imoveis_Feedback_Delete,Leads_Feedback_Success,Kanban_Feedback,Visitas_Feedback_Success feedback;

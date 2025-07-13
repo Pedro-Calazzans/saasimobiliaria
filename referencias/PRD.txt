@@ -1,0 +1,67 @@
+PRD: Plataforma SaaS Imobiliário Individual (MVP)
+Versão: 1.1
+
+1. Introdução e Visão Geral
+Este documento descreve os requisitos para o Produto Mínimo Viável (MVP) de uma plataforma SaaS para uso exclusivamente individual por corretores de imóveis. A decisão estratégica de restringir o escopo visa simplificar o desenvolvimento, garantir a segurança e permitir total controle sobre o código.
+
+A filosofia do MVP é criar uma "planilha turbinada": um sistema centralizado, robusto e intuitivo que organiza as operações diárias do corretor, servindo como uma base de dados sólida e escalável.
+
+2. Objetivos do MVP
+Validar a Proposta de Valor: Provar que um painel administrativo bem estruturado (um CRM simples) é uma ferramenta valiosa e desejável para o corretor individual.
+
+Garantir Simplicidade de Execução: Focar em um conjunto de funcionalidades essenciais, minimizando a complexidade técnica para permitir um desenvolvimento ágil e com controle total.
+
+Estabelecer uma Base Segura: Construir o SaaS sobre uma arquitetura de banco de dados segura (com RLS) que protege os dados do usuário desde o primeiro dia.
+
+3. Persona de Usuário (MVP)
+Corretor de Imóveis Individual:
+
+Necessidades: Precisa de uma ferramenta central para cadastrar seus imóveis, gerenciar seus leads de forma organizada e visualizar rapidamente o estágio de cada negociação.
+
+Dores: A gestão via múltiplas planilhas, blocos de notas e a agenda do celular é ineficiente e propensa a erros. Perde tempo procurando informações e não tem uma visão clara do seu funil de vendas.
+
+Motivação: Busca uma solução que organize seu trabalho e libere tempo para focar no que realmente importa: vender.
+
+4. Arquitetura da Solução
+O foco do projeto é o desenvolvimento de um Painel Administrativo SaaS. Esta plataforma web será o ambiente central onde o corretor gerencia todos os seus dados operacionais. A construção entregará um produto funcional e com valor intrínseco.
+
+5. Requisitos e Funcionalidades do MVP (Painel SaaS)
+As funcionalidades abaixo serão construídas utilizando bolt.new e operarão sobre o banco de dados definido no artefato script_sql_mvp.
+
+[PA-01] Gestão de Imóveis (CRUD - Criar, Ler, Atualizar, Deletar):
+
+Descrição: Uma interface completa para o corretor gerenciar seu portfólio de imóveis.
+
+Campos Chave (alinhados com a tabela properties):
+
+Título, Descrição, Endereço, Preço, Tipo, Status.
+
+Diferenciais: Um campo para listar os atributos de maior valor (ex: "Vista para o mar", "Piscina aquecida"). Mapeado para o campo differentials text[].
+
+Condições de Pagamento: Um campo estruturado para detalhar formas de pagamento aceitas (ex: Financiamento, FGTS, Veículo na troca). Mapeado para o campo payment_conditions jsonb.
+
+Observações: Um campo de texto livre para anotações adicionais. Mapeado para o campo observations text.
+
+URL da Foto de Capa.
+
+[PA-02] Gestão de Leads (CRUD):
+
+Descrição: Uma área para centralizar todos os leads capturados, permitindo ao corretor adicionar, visualizar e atualizar informações de contato e perfil.
+
+Campos Chave (alinhados com a tabela leads):
+
+Nome Completo, Telefone, Email, Origem.
+
+Anotações Manuais: Um campo de texto para registrar o histórico e detalhes importantes da negociação. Mapeado para o campo notes text.
+
+[PA-03] Funil de Vendas Visual (Kanban):
+
+Descrição: Um painel visual no estilo Kanban para que o corretor possa acompanhar o progresso de cada lead/negociação.
+
+Requisito Técnico: As colunas do Kanban corresponderão aos valores do tipo funnel_stage ('Novo', 'Primeiro Contato', 'Em Qualificação', etc.). Arrastar um card de lead de uma coluna para outra deverá atualizar o campo funnel_stage na tabela leads para aquele registro.
+
+[PA-04] Gestão de Visitas:
+
+Descrição: Uma interface para registrar e consultar as visitas agendadas, vinculando um lead a um imóvel.
+
+Requisito Técnico: A funcionalidade irá operar sobre a tabela visits, permitindo criar e visualizar os agendamentos.

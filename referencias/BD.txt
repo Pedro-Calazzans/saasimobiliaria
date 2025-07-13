@@ -1,0 +1,103 @@
+-- =================================================================
+-- SCRIPT DE CRIAÇÃO DO BANCO DE DADOS PARA SAAS IMOBILIÁRIO (MVP INDIVIDUAL)
+-- Plataforma: Supabase (PostgreSQL)
+-- Versão: 1.0 (Simplificada para usuário único)
+-- =================================================================
+
+-- ||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+-- MÓDULO 1: TIPOS CUSTOMIZADOS (ENUMS)
+-- Definição de tipos de dados fixos para garantir consistência nos campos de status.
+-- ||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+
+CREATE TYPE public.property_status AS ENUM ('Disponível', 'Em Negociação', 'Vendido', 'Alugado', 'Inativo');
+CREATE TYPE public.visit_status AS ENUM ('Agendada', 'Confirmada', 'Realizada', 'Cancelada');
+CREATE TYPE public.funnel_stage AS ENUM ('Novo', 'Primeiro Contato', 'Em Qualificação', 'Visita Agendada', 'Em Negociação', 'Ganho', 'Perdido');
+
+-- ||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+-- MÓDULO 2: TABELAS PRINCIPAIS
+-- Tabelas centrais do sistema, agora vinculadas diretamente ao usuário autenticado.
+-- ||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+
+-- Tabela de Imóveis (Properties)
+-- Cada imóvel pertence a um único usuário (o dono da conta).
+CREATE TABLE public.properties (
+    id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL, -- Referência direta ao usuário dono do imóvel.
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    title text NOT NULL,
+    description text,
+    address jsonb,
+    price numeric,
+    property_type text,
+    status public.property_status DEFAULT 'Disponível'::public.property_status NOT NULL,
+    features jsonb,
+    differentials text[], -- Campo para os diferenciais de maior valor.
+    payment_conditions jsonb, -- Campo para formas de pagamento (financiamento, troca, etc.).
+    observations text, -- Campo para observações gerais.
+    cover_photo_url text
+);
+COMMENT ON TABLE public.properties IS 'Catálogo de imóveis do usuário do SaaS.';
+
+-- Tabela de Leads
+-- Cada lead pertence ao usuário dono da conta.
+CREATE TABLE public.leads (
+    id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL, -- Referência direta ao usuário dono do lead.
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    full_name text NOT NULL,
+    phone text,
+    email text,
+    origin text,
+    funnel_stage public.funnel_stage DEFAULT 'Novo'::public.funnel_stage NOT NULL,
+    search_profile jsonb,
+    financial_profile jsonb,
+    notes text -- Campo para anotações manuais sobre o lead.
+);
+COMMENT ON TABLE public.leads IS 'Potenciais clientes (leads) do usuário.';
+
+-- Tabela de Visitas
+-- Cada visita está associada a um lead e a um imóvel do mesmo usuário.
+CREATE TABLE public.visits (
+    id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL, -- Garante que a visita pertence ao usuário.
+    lead_id uuid NOT NULL REFERENCES public.leads(id) ON DELETE CASCADE,
+    property_id uuid NOT NULL REFERENCES public.properties(id) ON DELETE CASCADE,
+    visit_datetime timestamp with time zone NOT NULL,
+    status public.visit_status DEFAULT 'Agendada'::public.visit_status NOT NULL,
+    feedback text
+);
+COMMENT ON TABLE public.visits IS 'Registros de agendamentos de visitas a imóveis.';
+
+
+-- ||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+-- MÓDULO 3: SEGURANÇA (ROW LEVEL SECURITY - RLS)
+-- Habilitar RLS para garantir que o usuário só possa ver e gerenciar seus próprios dados.
+-- Esta é a forma correta de garantir a privacidade dos dados no Supabase.
+-- ||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+
+-- Habilitar RLS em todas as tabelas
+ALTER TABLE public.properties ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.leads ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.visits ENABLE ROW LEVEL SECURITY;
+
+-- Criar políticas de acesso
+
+-- Política para a tabela `properties`
+CREATE POLICY "Usuário pode gerenciar seus próprios imóveis."
+ON public.properties FOR ALL
+USING (auth.uid() = user_id);
+
+-- Política para a tabela `leads`
+CREATE POLICY "Usuário pode gerenciar seus próprios leads."
+ON public.leads FOR ALL
+USING (auth.uid() = user_id);
+
+-- Política para a tabela `visits`
+CREATE POLICY "Usuário pode gerenciar suas próprias visitas."
+ON public.visits FOR ALL
+USING (auth.uid() = user_id);
+
+
+-- =================================================================
+-- FIM DO SCRIPT
+-- =================================================================
