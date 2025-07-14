@@ -9,9 +9,20 @@
 -- Definição de tipos de dados fixos para garantir consistência nos campos de status.
 -- ||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
 
-CREATE TYPE public.property_status AS ENUM ('Disponível', 'Em Negociação', 'Vendido', 'Alugado', 'Inativo');
-CREATE TYPE public.visit_status AS ENUM ('Agendada', 'Confirmada', 'Realizada', 'Cancelada');
-CREATE TYPE public.funnel_stage AS ENUM ('Novo', 'Primeiro Contato', 'Em Qualificação', 'Visita Agendada', 'Em Negociação', 'Ganho', 'Perdido');
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'property_status') THEN
+        CREATE TYPE public.property_status AS ENUM ('Disponível', 'Em Negociação', 'Vendido', 'Alugado', 'Inativo');
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'visit_status') THEN
+        CREATE TYPE public.visit_status AS ENUM ('Agendada', 'Confirmada', 'Realizada', 'Cancelada');
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'funnel_stage') THEN
+        CREATE TYPE public.funnel_stage AS ENUM ('Novo', 'Primeiro Contato', 'Em Qualificação', 'Visita Agendada', 'Em Negociação', 'Ganho', 'Perdido');
+    END IF;
+END $$;
 
 -- ||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
 -- MÓDULO 2: TABELAS PRINCIPAIS
