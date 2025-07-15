@@ -1,87 +1,119 @@
 graph TD
-    %% Definição de Estilos para Clareza
-    classDef page fill:#E1F5FE,stroke:#0288D1,stroke-width:2px;
-    classDef action fill:#FFF3E0,stroke:#F57C00,stroke-width:1px;
-    classDef decision fill:#FFEBEE,stroke:#D32F2F,stroke-width:1px;
-    classDef db fill:#E8F5E9,stroke:#388E3C,stroke-width:2px,stroke-dasharray: 5 5;
-    classDef feedback fill:#F3E5F5,stroke:#7B1FA2,stroke-width:1px,stroke-dasharray: 3 3;
+    %% =================================================================
+    %% Definição de Estilos para Clareza Visual (UX-Focused)
+    %% =================================================================
+    classDef page fill:#E3F2FD,stroke:#1565C0,stroke-width:2px,color:#0D47A1
+    classDef action fill:#FFFDE7,stroke:#FBC02D,stroke-width:1px,color:#424242
+    classDef modal fill:#FCE4EC,stroke:#C2185B,stroke-width:2px,color:#880E4F
+    classDef feedback fill:#E8F5E9,stroke:#2E7D32,stroke-width:1px,stroke-dasharray: 3 3,color:#1B5E20
+    classDef loading fill:#ECEFF1,stroke:#546E7A,stroke-width:1px,stroke-dasharray: 8 4,color:#37474F
+    classDef db fill:#EDE7F6,stroke:#5E35B1,stroke-width:2px,stroke-dasharray: 5 5,color:#311B92
 
-    %% --- FLUXO DE ENTRADA ---
-    A(Início) --> B[Página de Login];
-    B -- Autentica com Sucesso --> C[Dashboard Principal];
-    B -- Falha na Autenticação --> B;
-
-    %% --- NAVEGAÇÃO PRINCIPAL A PARTIR DO DASHBOARD ---
-    C --> D{O que o corretor deseja fazer?};
-    D -- "Gerenciar Imóveis" --> Imoveis_Page;
-    D -- "Gerenciar Leads" --> Leads_Page;
-    D -- "Ver Funil de Vendas" --> Kanban_Page;
-    D -- "Ver Visitas" --> Visitas_Page;
-
-    %% --- SUBGRAPH: GESTÃO DE IMÓVEIS [PA-01] ---
-    subgraph Gestão de Imóveis
-        Imoveis_Page[Página: Meus Imóveis];
-        Imoveis_Page --> Imoveis_Action{Ação desejada?};
-        Imoveis_Action -- "Adicionar Novo Imóvel" --> Imoveis_Form[Abre formulário de cadastro];
-        Imoveis_Action -- "Editar Imóvel" --> Imoveis_SelectEdit[Seleciona um imóvel da lista];
-        Imoveis_Action -- "Excluir Imóvel" --> Imoveis_SelectDelete[Seleciona um imóvel da lista];
-
-        Imoveis_SelectEdit --> Imoveis_Form;
-        Imoveis_Form --> Imoveis_Save[Preenche/Altera dados e clica em Salvar];
-        Imoveis_Save --> Imoveis_DB_Write[("Salva/Atualiza dados na tabela 'properties'")];
-        Imoveis_DB_Write --> Imoveis_Feedback_Success[Exibe notificação: Imóvel salvo com sucesso!];
-        Imoveis_Feedback_Success --> Imoveis_Page;
-
-        Imoveis_SelectDelete --> Imoveis_ConfirmDelete{Tem certeza?};
-        Imoveis_ConfirmDelete -- "Sim" --> Imoveis_DB_Delete[("Deleta registro da tabela 'properties'")];
-        Imoveis_DB_Delete --> Imoveis_Feedback_Delete[Exibe notificação: Imóvel excluído.];
-        Imoveis_Feedback_Delete --> Imoveis_Page;
-        Imoveis_ConfirmDelete -- "Não" --> Imoveis_Page;
+    %% =================================================================
+    %% FLUXO DE AUTENTICAÇÃO E ENTRADA
+    %% =================================================================
+    subgraph "Jornada de Autenticação"
+        direction LR
+        Start(Início) --> LoginPage[Página de Login];
+        LoginPage -- Preenche E-mail/Senha e Clica em "Login" --> Auth_Action
+        Auth_Action{Verifica Credenciais};
+        Auth_Action -- "Sucesso" --> Auth_Loading[Exibe loader no botão];
+        Auth_Loading --> Auth_DB[("Valida com Supabase Auth")];
+        Auth_DB -- "OK" --> Dashboard_Page[Redireciona para /dashboard];
+        Auth_Action -- "Falha" --> Auth_Error[Exibe erro nos campos do formulário<br/>'Email ou senha inválidos'];
+        Auth_Error --> LoginPage;
     end
 
-    %% --- SUBGRAPH: GESTÃO DE LEADS [PA-02] ---
-    subgraph Gestão de Leads
-        Leads_Page[Página: Meus Leads];
-        Leads_Page --> Leads_Action{Ação desejada?};
-        Leads_Action -- "Adicionar Novo Lead" --> Leads_Form[Abre formulário de cadastro de lead];
-        Leads_Action -- "Ver/Editar Lead" --> Leads_SelectEdit[Seleciona um lead da lista];
+    %% =================================================================
+    %% NAVEGAÇÃO PRINCIPAL (HUB CENTRAL)
+    %% =================================================================
+    subgraph "Painel Principal e Navegação"
+        Dashboard_Page --> Sidebar[Sidebar de Navegação Visível];
+        Sidebar -- Clica em "Imóveis" --> Imoveis_Page[Página: Meus Imóveis];
+        Sidebar -- Clica em "Leads" --> Leads_Page[Página: Meus Leads];
+        Sidebar -- Clica em "Funil de Vendas" --> Kanban_Page[Página: Funil Kanban];
+        Sidebar -- Clica em "Visitas" --> Visitas_Page[Página: Agenda de Visitas];
+    end
+
+    %% =================================================================
+    %% [PA-01] GESTÃO DE IMÓVEIS (UX DETALHADO)
+    %% =================================================================
+    subgraph "UX - Gestão de Imóveis"
+        Imoveis_Page -- Carregamento Inicial --> Imoveis_Loading[Exibe skeleton loader na tabela];
+        Imoveis_Loading --> Imoveis_DB_Read[("Busca dados em 'properties'")];
+        Imoveis_DB_Read --> Imoveis_Render[Renderiza tabela com imóveis];
+        Imoveis_Render -- "Nenhum imóvel encontrado" --> Imoveis_EmptyState[Exibe estado de 'Nenhum imóvel cadastrado'];
         
-        Leads_SelectEdit --> Leads_Form;
-        Leads_Form --> Leads_Save[Preenche/Altera dados e clica em Salvar];
-        Leads_Save --> Leads_DB_Write[("Salva/Atualiza dados na tabela 'leads'")];
-        Leads_DB_Write --> Leads_Feedback_Success[Exibe notificação: Lead salvo com sucesso!];
-        Leads_Feedback_Success --> Leads_Page;
-    end
-
-    %% --- SUBGRAPH: FUNIL DE VENDAS KANBAN [PA-03] ---
-    subgraph Funil_de_Vendas_Kanban
-        Kanban_Page[Página: Funil de Vendas Kanban];
-        Kanban_Page --> Kanban_View[Visualiza leads como cards nas colunas de status];
-        Kanban_View --> Kanban_Drag[Arrasta um card de lead para outra coluna];
-        Kanban_Drag --> Kanban_DB_Update[("Atualiza o campo 'funnel_stage' na tabela 'leads'")];
-        Kanban_DB_Update --> Kanban_Feedback[Exibe notificação: Status do lead atualizado!];
-        Kanban_Feedback --> Kanban_Page;
+        Imoveis_Page -- Digita no campo de busca --> Imoveis_Filter[Filtra a lista de imóveis em tempo real];
         
-        Kanban_View --> Kanban_ClickCard[Clica em um card para ver detalhes];
-        Kanban_ClickCard --> Leads_Page;
+        Imoveis_Page -- Clica em "Adicionar Imóvel" --> AddImovel_Modal[Abre Modal: Adicionar Novo Imóvel];
+        AddImovel_Modal -- Preenche formulário e clica "Salvar" --> AddImovel_Loading[Exibe Toast: 'Salvando...'];
+        AddImovel_Loading --> AddImovel_DB[("Salva em 'properties'")];
+        AddImovel_DB -- "Sucesso" --> AddImovel_Success[Fecha modal e exibe Toast: 'Imóvel salvo!'];
+        AddImovel_DB -- "Erro" --> AddImovel_Error[Exibe Toast de erro: 'Falha ao salvar'];
+        AddImovel_Success --> Imoveis_Page;
+
+        Imoveis_Render -- Clica em uma linha da tabela --> EditImovel_Modal[Abre Modal: Detalhes do Imóvel (Modo Leitura)];
+        EditImovel_Modal -- Clica em "Editar Imóvel" --> EditImovel_EditMode[Campos do formulário se tornam editáveis];
+        EditImovel_EditMode -- Altera dados e clica "Salvar Alterações" --> EditImovel_Loading[Exibe Toast: 'Atualizando...'];
+        EditImovel_Loading --> EditImovel_DB[("Atualiza em 'properties'")];
+        EditImovel_DB -- "Sucesso" --> EditImovel_Success[Toast: 'Alterações salvas!', modal volta ao modo leitura];
+        EditImovel_DB -- "Erro" --> EditImovel_Error[Toast de erro];
+
+        Imoveis_Render -- Clica no ícone de lixeira --> DeleteImovel_Dialog[Abre AlertDialog de confirmação];
+        DeleteImovel_Dialog -- Clica em "Continuar" --> DeleteImovel_Loading[Exibe Toast: 'Excluindo...'];
+        DeleteImovel_Loading --> DeleteImovel_DB[("Deleta de 'properties'")];
+        DeleteImovel_DB -- "Sucesso" --> DeleteImovel_Success[Remove linha da tabela e exibe Toast: 'Imóvel excluído!'];
+        DeleteImovel_Dialog -- Clica em "Cancelar" --> Imoveis_Render;
     end
 
-    %% --- SUBGRAPH: GESTÃO DE VISITAS [PA-04] ---
-    subgraph Gestão de Visitas
-        Visitas_Page[Página: Visitas Agendadas];
-        Visitas_Page --> Visitas_Action{Ação desejada?};
-        Visitas_Action -- "Agendar Nova Visita" --> Visitas_Form[Abre formulário de agendamento];
+    %% =================================================================
+    %% [PA-02 & PA-03] LEADS E KANBAN (UX DETALHADO)
+    %% =================================================================
+    subgraph "UX - Leads e Funil Kanban"
+        Leads_Page -- Fluxo CRUD similar ao de Imóveis --> Leads_Modals[Modais de Adicionar/Editar/Excluir Lead];
         
-        Visitas_Form --> Visitas_Fill[Preenche dados: seleciona Lead, Imóvel, Data e Hora];
-        Visitas_Fill --> Visitas_Save[Clica em Salvar Visita];
-        Visitas_Save --> Visitas_DB_Write[("Salva dados na tabela 'visits'")];
-        Visitas_DB_Write --> Visitas_Feedback_Success[Exibe notificação: Visita agendada com sucesso!];
-        Visitas_Feedback_Success --> Visitas_Page;
+        Kanban_Page -- Carregamento Inicial --> Kanban_Loading[Exibe skeleton loaders nas colunas];
+        Kanban_Loading --> Kanban_DB_Read[("Busca dados em 'leads'")];
+        Kanban_DB_Read --> Kanban_Render[Renderiza cards de leads nas colunas corretas];
+
+        Kanban_Render -- Começa a arrastar um card --> Drag_Start[Card levanta e fica semitransparente];
+        Drag_Start -- Move sobre outra coluna --> Drag_Over[Coluna de destino é destacada visualmente];
+        Drag_Over -- Solta o card na nova coluna --> Drag_End_Loading[Card fica em estado de carregamento];
+        Drag_End_Loading --> Kanban_DB_Update[("Atualiza 'funnel_stage' do lead")];
+        Kanban_DB_Update -- "Sucesso" --> Kanban_Update_Success[Card é inserido na nova posição, Toast: 'Status atualizado!'];
+        Kanban_DB_Update -- "Erro" --> Kanban_Update_Error[Card volta à posição original, Toast de erro];
+        
+        Kanban_Render -- Clica em um card --> EditLead_Modal[Abre Modal: Editar Lead];
     end
 
-    %% --- APLICAÇÃO GERAL DE ESTILOS ---
-    class B,C,Imoveis_Page,Leads_Page,Kanban_Page,Visitas_Page page;
-    class D,Imoveis_Action,Imoveis_ConfirmDelete,Leads_Action,Visitas_Action decision;
-    class Imoveis_Form,Imoveis_Save,Imoveis_SelectEdit,Imoveis_SelectDelete,Leads_Form,Leads_Save,Leads_SelectEdit,Kanban_View,Kanban_Drag,Kanban_ClickCard,Visitas_Form,Visitas_Fill,Visitas_Save action;
-    class Imoveis_DB_Write,Imoveis_DB_Delete,Leads_DB_Write,Kanban_DB_Update,Visitas_DB_Write db;
-    class Imoveis_Feedback_Success,Imoveis_Feedback_Delete,Leads_Feedback_Success,Kanban_Feedback,Visitas_Feedback_Success feedback;
+    %% =================================================================
+    %% [PA-04] GESTÃO DE VISITAS (UX DETALHADO)
+    %% =================================================================
+    subgraph "UX - Agenda de Visitas"
+        Visitas_Page -- Carregamento Inicial --> Visitas_Loading[Exibe loader no calendário e na lista];
+        Visitas_Loading --> Visitas_DB_Read[("Busca dados em 'visits'")];
+        Visitas_DB_Read --> Visitas_Render[Renderiza calendário com dias marcados e lista de visitas do dia atual];
+
+        Visitas_Render -- Clica em um dia no calendário --> Filter_Visits[Lista de visitas é atualizada para o dia selecionado];
+        
+        Visitas_Page -- Clica em "Agendar Visita" --> AddVisit_Modal[Abre Modal: Agendar Nova Visita];
+        AddVisit_Modal -- Usa Combobox para selecionar Lead/Imóvel --> AddVisit_Form[Preenche data/hora e clica "Salvar"];
+        AddVisit_Form --> AddVisit_Loading[Toast: 'Agendando...'];
+        AddVisit_Loading --> AddVisit_DB[("Salva em 'visits'")];
+        AddVisit_DB -- "Sucesso" --> AddVisit_Success[Fecha modal, atualiza calendário/lista, Toast: 'Visita agendada!'];
+        
+        Visitas_Render -- Clica em "Editar" numa visita --> EditVisit_Modal[Abre modal de edição];
+        Visitas_Render -- Clica em "Excluir" numa visita --> DeleteVisit_Dialog[Abre diálogo de confirmação];
+    end
+
+    %% =================================================================
+    %% Aplicação de Estilos
+    %% =================================================================
+    classDef default fill:#fff,stroke:#333,stroke-width:1px;
+    class Start,LoginPage,Dashboard_Page,Imoveis_Page,Leads_Page,Kanban_Page,Visitas_Page page;
+    class Auth_Action,Imoveis_Filter,Drag_Start,Drag_Over,Filter_Visits action;
+    class AddImovel_Modal,EditImovel_Modal,DeleteImovel_Dialog,EditLead_Modal,AddVisit_Modal,EditVisit_Modal,DeleteVisit_Dialog modal;
+    class Auth_Error,AddImovel_Success,AddImovel_Error,EditImovel_Success,EditImovel_Error,DeleteImovel_Success,Kanban_Update_Success,Kanban_Update_Error,AddVisit_Success feedback;
+    class Auth_Loading,Imoveis_Loading,AddImovel_Loading,EditImovel_Loading,DeleteImovel_Loading,Kanban_Loading,Drag_End_Loading,Visitas_Loading,AddVisit_Loading loading;
+    class Auth_DB,Imoveis_DB_Read,AddImovel_DB,EditImovel_DB,DeleteImovel_DB,Kanban_DB_Read,Kanban_DB_Update,Visitas_DB_Read,AddVisit_DB db;

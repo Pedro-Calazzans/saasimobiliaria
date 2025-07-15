@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
+import { PageHeader } from '@/components/page-header'
 import { Button } from '@/components/ui/button'
 import {
   Table,
@@ -23,68 +24,86 @@ import {
 import { Input } from '@/components/ui/input'
 import { AddLeadModal } from './components/add-lead-modal'
 import { EditLeadModal, Lead } from './components/edit-lead-modal'
-import { Trash2 } from 'lucide-react'
+import { Trash2, ArrowUpDown } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
+import toast from 'react-hot-toast'
 
-// A interface Lead será movida para o edit-lead-modal.tsx para ser reutilizada
-// interface Lead { ... }
+const SkeletonRow = () => (
+  <tr className="animate-pulse">
+    <td className="p-4"><div className="h-4 bg-gray-300 rounded w-3/4"></div></td>
+    <td className="p-4"><div className="h-4 bg-gray-300 rounded w-full"></div></td>
+    <td className="p-4"><div className="h-4 bg-gray-300 rounded w-full"></div></td>
+    <td className="p-4"><div className="h-4 bg-gray-300 rounded w-full"></div></td>
+    <td className="p-4"><div className="h-4 bg-gray-300 rounded w-full"></div></td>
+    <td className="p-4 text-right"><div className="h-8 w-8 bg-gray-300 rounded inline-block"></div></td>
+  </tr>
+);
 
-export const initialLeads: Lead[] = [
-  {
-    id: '1',
-    name: 'João Silva',
-    email: 'joao.silva@example.com',
-    phone: '(11) 98765-4321',
-    funnel_stage: 'Novo',
-    origin: 'Portal Imobiliário',
-    search_profile: 'Apartamento 2 quartos na Zona Sul',
-    financial_profile: 'Financiamento aprovado',
-    notes: 'Primeiro contato, parece promissor.',
-  },
-  {
-    id: '2',
-    name: 'Maria Oliveira',
-    email: 'maria.oliveira@example.com',
-    phone: '(21) 91234-5678',
-    funnel_stage: 'Em Qualificação',
-    origin: 'Indicação',
-    search_profile: 'Casa com 3 quartos e quintal',
-    financial_profile: 'Pagamento à vista',
-    notes: 'Indicado por cliente antigo.',
-  },
-  {
-    id: '3',
-    name: 'Pedro Santos',
-    email: 'pedro.santos@example.com',
-    phone: '(31) 95555-8888',
-    funnel_stage: 'Visita Agendada',
-    origin: 'Website',
-    search_profile: 'Cobertura com vista para o parque',
-    financial_profile: 'Analisa permuta',
-    notes: 'Agendou visita para o imóvel XYZ.',
-  },
-]
+type SortKey = keyof Lead;
 
 export default function LeadsPage() {
-  const [leads, setLeads] = useState<Lead[]>(initialLeads)
+  const [leads, setLeads] = useState<Lead[]>([])
+  const [loading, setLoading] = useState(true);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [leadToDelete, setLeadToDelete] = useState<Lead | null>(null)
+  const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: 'ascending' | 'descending' } | null>(null);
 
-  const handleAddLead = async (newLeadData: Omit<Lead, 'id' | 'created_at'>) => {
-    try {
-      const response = await fetch('/api/leads', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newLeadData),
+  useEffect(() => {
+    const fetchLeads = async () => {
+      const supabase = createClient();
+      const { data, error } = await supabase.from('leads').select('*');
+      if (error) {
+        toast.error('Erro ao buscar os leads.');
+        console.error(error);
+      } else {
+        setLeads(data as Lead[]);
+      }
+      setLoading(false);
+    };
+    fetchLeads();
+  }, []);
+
+  const sortedLeads = useMemo(() => {
+    let sortableItems = [...leads];
+    if (sortConfig !== null) {
+      sortableItems.sort((a, b) => {
+        const aValue = a[sortConfig.key];
+        const bValue = b[sortConfig.key];
+        if (aValue == null) return 1;
+        if (bValue == null) return -1;
+        if (aValue < bValue) {
+          return sortConfig.direction === 'ascending' ? -1 : 1;
+        }
+        if (aValue > bValue) {
+          return sortConfig.direction === 'ascending' ? 1 : -1;
+        }
+        return 0;
       });
-      if (!response.ok) throw new Error('Falha ao criar lead');
-      const result = await response.json();
-      setLeads((prev) => [...prev, result.lead]);
-    } catch (error) {
-      console.error(error);
     }
+    return sortableItems;
+  }, [leads, sortConfig]);
+
+  const requestSort = (key: SortKey) => {
+    let direction: 'ascending' | 'descending' = 'ascending';
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
+      direction = 'descending';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const filteredLeads = useMemo(() => {
+    if (!sortedLeads) return [];
+    return sortedLeads.filter(lead =>
+      lead.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      lead.email.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [sortedLeads, searchTerm]);
+
+  const handleAddLead = (newLead: Lead) => {
+    setLeads((prev) => [...prev, newLead]);
   };
 
   const handleEditClick = (lead: Lead) => {
@@ -105,40 +124,37 @@ export default function LeadsPage() {
 
   const handleDeleteLead = async () => {
     if (!leadToDelete) return;
-    try {
-      const response = await fetch(`/api/leads?id=${leadToDelete.id}`, {
-        method: 'DELETE',
-      });
-      if (!response.ok) {
-        throw new Error('Falha ao excluir o lead');
-      }
+    
+    const supabase = createClient();
+    const { error } = await supabase.from('leads').delete().eq('id', leadToDelete.id);
+
+    if (error) {
+      toast.error('Falha ao excluir o lead.');
+      console.error(error);
+    } else {
+      toast.success('Lead excluído com sucesso!');
       setLeads((prev) => prev.filter((lead) => lead.id !== leadToDelete.id));
       setLeadToDelete(null);
-    } catch (error) {
-      console.error('Erro ao excluir:', error);
     }
   };
 
   const handleModalLeadDeleted = (leadId: string) => {
-    // Esta função é chamada pelo EditLeadModal
     setLeads((prev) => prev.filter((lead) => lead.id !== leadId));
-    setIsEditModalOpen(false); // Fecha o modal de edição também
+    setIsEditModalOpen(false);
   };
 
-
-  const filteredLeads = useMemo(() => {
-    return leads.filter(lead =>
-      lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      lead.email.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [leads, searchTerm]);
+  const getSortIndicator = (key: SortKey) => {
+    if (!sortConfig || sortConfig.key !== key) {
+      return <ArrowUpDown className="h-4 w-4 ml-2 opacity-20" />;
+    }
+    return sortConfig.direction === 'ascending' ? ' 🔼' : ' 🔽';
+  };
 
   return (
     <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-semibold">Meus Leads</h1>
+      <PageHeader title="Meus Leads">
         <Button onClick={() => setIsAddModalOpen(true)}>Adicionar Lead</Button>
-      </div>
+      </PageHeader>
 
       <div className="mb-4">
         <Input
@@ -149,38 +165,46 @@ export default function LeadsPage() {
         />
       </div>
 
-      <div className="border rounded-lg">
+      <div className="border rounded-lg overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Nome</TableHead>
-              <TableHead>Email</TableHead>
+              <TableHead className="cursor-pointer" onClick={() => requestSort('full_name')}><div className="flex items-center">Nome {getSortIndicator('full_name')}</div></TableHead>
+              <TableHead className="cursor-pointer" onClick={() => requestSort('email')}><div className="flex items-center">Email {getSortIndicator('email')}</div></TableHead>
               <TableHead>Telefone</TableHead>
-              <TableHead>Etapa do Funil</TableHead>
-              <TableHead>Origem</TableHead>
+              <TableHead className="cursor-pointer" onClick={() => requestSort('funnel_stage')}><div className="flex items-center">Etapa do Funil {getSortIndicator('funnel_stage')}</div></TableHead>
+              <TableHead className="cursor-pointer" onClick={() => requestSort('origin')}><div className="flex items-center">Origem {getSortIndicator('origin')}</div></TableHead>
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredLeads.map((lead) => (
-              <TableRow key={lead.id} className="hover:bg-gray-50">
-                <TableCell
-                  className="font-medium cursor-pointer hover:underline"
-                  onClick={() => handleEditClick(lead)}
-                >
-                  {lead.name}
-                </TableCell>
-                <TableCell>{lead.email}</TableCell>
-                <TableCell>{lead.phone}</TableCell>
-                <TableCell>{lead.funnel_stage}</TableCell>
-                <TableCell>{lead.origin}</TableCell>
-                <TableCell className="text-right">
-                  <Button variant="ghost" size="icon" onClick={() => handleDeleteConfirmation(lead)}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
+            {loading ? (
+              <>
+                <SkeletonRow />
+                <SkeletonRow />
+                <SkeletonRow />
+              </>
+            ) : (
+              filteredLeads.map((lead) => (
+                <TableRow key={lead.id} className="hover:bg-gray-50">
+                  <TableCell
+                    className="font-medium cursor-pointer hover:underline"
+                    onClick={() => handleEditClick(lead)}
+                  >
+                    {lead.full_name}
+                  </TableCell>
+                  <TableCell>{lead.email}</TableCell>
+                  <TableCell>{lead.phone}</TableCell>
+                  <TableCell>{lead.funnel_stage}</TableCell>
+                  <TableCell>{lead.origin}</TableCell>
+                  <TableCell className="text-right">
+                    <Button variant="ghost" size="icon" onClick={() => handleDeleteConfirmation(lead)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </div>
@@ -191,7 +215,6 @@ export default function LeadsPage() {
         onLeadAdded={handleAddLead}
       />
 
-      {/* O modal de edição é sempre renderizado, mas controlado por isOpen */}
       <EditLeadModal
         lead={selectedLead}
         isOpen={isEditModalOpen}
@@ -200,14 +223,13 @@ export default function LeadsPage() {
         onLeadDeleted={handleModalLeadDeleted}
       />
 
-      {/* O AlertDialog é controlado pelo estado leadToDelete */}
       <AlertDialog open={!!leadToDelete} onOpenChange={() => setLeadToDelete(null)}>
         {leadToDelete && (
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
               <AlertDialogDescription>
-                Essa ação não pode ser desfeita. Isso excluirá permanentemente o lead "{leadToDelete.name}".
+                Essa ação não pode ser desfeita. Isso excluirá permanentemente o lead "{leadToDelete.full_name}".
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
