@@ -13,7 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { createClient } from '@/lib/supabase/client';
+import { useSupabase } from '@/components/providers/supabase-provider';
 import toast from 'react-hot-toast';
 import { Visit } from '@/types/visit';
 import { Lead } from '@/app/(main)/leads/components/edit-lead-modal';
@@ -25,6 +25,7 @@ type ComboboxItem = {
 };
 
 const VisitsPage = () => {
+  const supabase = useSupabase();
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [visits, setVisits] = useState<Visit[]>([]);
   const [leads, setLeads] = useState<ComboboxItem[]>([]);
@@ -40,7 +41,6 @@ const VisitsPage = () => {
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
-      const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         toast.error("Usuário não autenticado.");
@@ -92,7 +92,6 @@ const VisitsPage = () => {
       return;
     }
 
-    const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
@@ -131,7 +130,6 @@ const VisitsPage = () => {
 
   const handleDeleteVisit = async () => {
     if (!selectedVisit) return;
-    const supabase = createClient();
     const { error } = await supabase.from('visits').delete().eq('id', selectedVisit.id);
     if (error) {
       toast.error('Erro ao excluir a visita.');

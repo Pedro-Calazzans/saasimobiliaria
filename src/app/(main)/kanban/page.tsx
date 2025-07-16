@@ -6,7 +6,7 @@ import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-ki
 import { Card, CardContent } from '@/components/ui/card';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { createClient } from '@/lib/supabase/client';
+import { useSupabase } from '@/components/providers/supabase-provider';
 import type { Lead, FunnelStage } from '@/app/(main)/leads/components/edit-lead-modal';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
@@ -107,12 +107,12 @@ function KanbanColumn({ column }: { column: Column }) {
   }
 
   export default function KanbanPage() {
+    const supabase = useSupabase();
     const [columns, setColumns] = useState<Column[]>(initialColumns);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
       const fetchLeads = async () => {
-        const supabase = createClient();
         const { data: leadsData, error } = await supabase.from('leads').select('*');
 
         if (error) {
@@ -238,7 +238,6 @@ function KanbanColumn({ column }: { column: Column }) {
         const newStatus = columnIdToFunnelStep[newColumnId];
         if (!newStatus) return;
 
-        const supabase = createClient();
         const { error } = await supabase
           .from('leads')
           .update({ funnel_stage: newStatus })

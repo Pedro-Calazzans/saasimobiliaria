@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import toast from 'react-hot-toast';
-import { createClient } from '@/lib/supabase/client';
+import { useSupabase } from '@/components/providers/supabase-provider';
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -42,6 +42,7 @@ const initialState: Partial<Lead> = {
 };
 
 export function AddLeadModal({ isOpen, onOpenChange, onLeadAdded }: AddLeadModalProps) {
+  const supabase = useSupabase();
   const [formData, setFormData] = useState<Partial<Lead>>(initialState);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [isFormValid, setIsFormValid] = useState(false);
@@ -96,7 +97,6 @@ export function AddLeadModal({ isOpen, onOpenChange, onLeadAdded }: AddLeadModal
       return;
     }
 
-    const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       toast.error('Você precisa estar logado para adicionar um lead.');

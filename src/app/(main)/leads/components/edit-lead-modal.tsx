@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { createClient } from '@/lib/supabase/client'
+import { useSupabase } from '@/components/providers/supabase-provider'
 import toast from 'react-hot-toast'
 import {
   Dialog,
@@ -74,6 +74,7 @@ interface EditLeadModalProps {
 }
 
 export function EditLeadModal({ lead, isOpen, onClose, onLeadUpdated, onLeadDeleted }: EditLeadModalProps) {
+  const supabase = useSupabase();
   const [formData, setFormData] = useState<Lead | null>(null)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
@@ -136,7 +137,6 @@ export function EditLeadModal({ lead, isOpen, onClose, onLeadUpdated, onLeadDele
     }
     if (!formData) return;
 
-    const supabase = createClient();
     const { id, created_at, ...updateData } = formData;
 
     const { data, error } = await supabase
@@ -160,7 +160,6 @@ export function EditLeadModal({ lead, isOpen, onClose, onLeadUpdated, onLeadDele
   const handleDelete = async () => {
     if (!formData) return;
 
-    const supabase = createClient();
     const { error } = await supabase.from('leads').delete().eq('id', formData.id);
 
     if (error) {

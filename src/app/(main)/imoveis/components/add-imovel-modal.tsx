@@ -22,7 +22,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { Imovel, PropertyStatus } from '@/types/imovel';
-import { createClient } from '@/lib/supabase/client';
+import { useSupabase } from '@/components/providers/supabase-provider';
 
 interface AddImovelModalProps {
   onImovelAdded: (novoImovel: Imovel) => void;
@@ -54,6 +54,7 @@ const initialState: Partial<Imovel> = {
 };
 
 export function AddImovelModal({ onImovelAdded }: AddImovelModalProps) {
+  const supabase = useSupabase();
   const [open, setOpen] = useState(false);
   const [imovel, setImovel] = useState<Partial<Imovel>>(initialState);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
@@ -145,8 +146,6 @@ export function AddImovelModal({ onImovelAdded }: AddImovelModalProps) {
       return;
     }
 
-    const supabase = createClient();
-    
     // Obter o ID do usuário da sessão
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { createClient } from '@/lib/supabase/client';
+import { useSupabase } from '@/components/providers/supabase-provider';
 import toast from 'react-hot-toast';
 import { Utensils } from 'lucide-react';
 
@@ -38,12 +38,12 @@ const DashboardCard = ({ title, value, note }: { title: string, value: string, n
 );
 
 export default function DashboardPage() {
+  const supabase = useSupabase();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
-      const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         setLoading(false);

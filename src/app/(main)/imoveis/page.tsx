@@ -19,7 +19,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Imovel } from '@/types/imovel';
-import { createClient } from '@/lib/supabase/client';
+import { useSupabase } from '@/components/providers/supabase-provider';
 import toast from 'react-hot-toast';
 
 const SkeletonRow = () => (
@@ -46,6 +46,7 @@ const SkeletonRow = () => (
 type SortKey = keyof Imovel;
 
 export default function ImoveisPage() {
+  const supabase = useSupabase();
   const [imoveis, setImoveis] = useState<Imovel[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedImovel, setSelectedImovel] = useState<Imovel | null>(null);
@@ -55,7 +56,6 @@ export default function ImoveisPage() {
 
   useEffect(() => {
     const fetchImoveis = async () => {
-      const supabase = createClient();
       const { data, error } = await supabase.from('properties').select('*');
 
       if (error) {

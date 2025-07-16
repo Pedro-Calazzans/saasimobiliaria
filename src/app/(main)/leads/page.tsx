@@ -25,7 +25,7 @@ import { Input } from '@/components/ui/input'
 import { AddLeadModal } from './components/add-lead-modal'
 import { EditLeadModal, Lead } from './components/edit-lead-modal'
 import { Trash2, ArrowUpDown } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
+import { useSupabase } from '@/components/providers/supabase-provider'
 import toast from 'react-hot-toast'
 
 const SkeletonRow = () => (
@@ -42,6 +42,7 @@ const SkeletonRow = () => (
 type SortKey = keyof Lead;
 
 export default function LeadsPage() {
+  const supabase = useSupabase();
   const [leads, setLeads] = useState<Lead[]>([])
   const [loading, setLoading] = useState(true);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
@@ -53,7 +54,6 @@ export default function LeadsPage() {
 
   useEffect(() => {
     const fetchLeads = async () => {
-      const supabase = createClient();
       const { data, error } = await supabase.from('leads').select('*');
       if (error) {
         toast.error('Erro ao buscar os leads.');
@@ -125,7 +125,6 @@ export default function LeadsPage() {
   const handleDeleteLead = async () => {
     if (!leadToDelete) return;
     
-    const supabase = createClient();
     const { error } = await supabase.from('leads').delete().eq('id', leadToDelete.id);
 
     if (error) {

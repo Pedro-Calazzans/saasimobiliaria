@@ -32,7 +32,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { Imovel, PropertyStatus } from '@/types/imovel';
-import { createClient } from '@/lib/supabase/client';
+import { useSupabase } from '@/components/providers/supabase-provider';
 
 interface EditImovelModalProps {
   imovel: Imovel | null;
@@ -43,6 +43,7 @@ interface EditImovelModalProps {
 }
 
 export function EditImovelModal({ imovel, isOpen, onClose, onImovelUpdated, onImovelDeleted }: EditImovelModalProps) {
+  const supabase = useSupabase();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<Imovel | null>(imovel);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -154,7 +155,6 @@ export function EditImovelModal({ imovel, isOpen, onClose, onImovelUpdated, onIm
     }
     if (!formData) return;
 
-    const supabase = createClient();
     const { id, created_at, user_id, ...updateData } = formData;
 
     const { data, error } = await supabase
@@ -178,7 +178,6 @@ export function EditImovelModal({ imovel, isOpen, onClose, onImovelUpdated, onIm
   async function handleDelete() {
     if (!formData) return;
 
-    const supabase = createClient();
     const { error } = await supabase
       .from('properties')
       .delete()
